@@ -16,16 +16,18 @@ namespace NetExtensions
 
         private readonly ILogger<SqLiteDbRestore> _logger;
         private readonly string _databaseFile;
-        private readonly string _zippedSqlFiles;
-        private readonly string _path;
+        private readonly string _zippedSqlFile;
+        private readonly string _unzippedSqlFilesFolder;
 
         public SqLiteDbRestore(ILogger<SqLiteDbRestore> logger)
         {
             _logger = logger;
-            _path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            _databaseFile = $"{_path}\\{DatabaseFile}";
-            _zippedSqlFiles = $"{_path}\\{ZippedSqlFiles}";
-        }
+            var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            _databaseFile = $"{path}\\{DatabaseFile}";
+            _zippedSqlFile = $"{path}\\{ZippedSqlFile}";
+            _unzippedSqlFilesFolder = $"{path}\\{UnzippedSqlFilesFolder}";
+ 
+    }
 
         public async Task<bool> RestoreAsync(bool backup = false)
         {
@@ -43,16 +45,22 @@ namespace NetExtensions
                     }
 
                     _logger.LogInformation($"{_databaseFile} file exists moving");
-                    File.Move(_databaseFile, $"{_path}//{Guid.NewGuid()}-{DatabaseFile}");
+                    File.Move(_databaseFile, $"{Guid.NewGuid()}-{_databaseFile}");
                 }
 
             
-                var file = File.Exists(_zippedSqlFiles);
-                if (!file) await GetSqlFileFormGithub(_zippedSqlFiles);
-                ZipFile.ExtractToDirectory(_zippedSqlFiles, _path, true);
-                CreateDb(_path);
+                var file = File.Exists(_zippedSqlFile);
+                if (!file)
+                {
+                    _logger.LogInformation($"Get sql zip file from Github url: {GithubUrl}");
+                    await GetSqlFileFormGithub(_zippedSqlFile);
+                    _logger.LogInformation($"sql zip file  is downloaded from Github url: {GithubUrl}");
+                }
+           
+                ZipFile.ExtractToDirectory(_zippedSqlFile, _unzippedSqlFilesFolder, true);
+                CreateDb();
                 _logger.LogInformation("db has been created created");
-                Directory.Delete($"{_path}\\sqls", true);
+                Directory.Delete(_unzippedSqlFilesFolder, true);
                 _logger.LogInformation("Extracted files have been deleted");
                 _logger.LogInformation($"BusinessId db is ready");
                 
@@ -76,16 +84,15 @@ namespace NetExtensions
             await using var fs = File.Create(fileInfo.FullName);
             ms.Seek(0, SeekOrigin.Begin);
             ms.CopyTo(fs);
-            _logger.LogInformation($"sql zip file  is downloaded from Github url: {GithubUrl}");
         }
 
-        private void CreateDb(string path)
+        private void CreateDb()
         {
-            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder {DataSource = DatabaseFile}.ConnectionString);
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder {DataSource = _databaseFile}.ConnectionString);
             connection.Open();
             DeleteTable(connection);
             CreateTable(connection);
-            LoadData(path, connection);
+            LoadData(connection);
             CreateIndex(connection);
         }
 
@@ -103,9 +110,9 @@ namespace NetExtensions
             createTableCmd.ExecuteNonQuery();
         }
 
-        private void LoadData(string path, SqliteConnection connection)
+        private void LoadData(SqliteConnection connection)
         {
-            foreach (var f in new DirectoryInfo($"{path}\\sqls").GetFiles("*.sql"))
+            foreach (var f in new DirectoryInfo(_unzippedSqlFilesFolder).GetFiles("*.sql"))
             {
                 ReadFile(connection, f);
             }

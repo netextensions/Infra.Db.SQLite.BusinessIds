@@ -8,20 +8,13 @@
     <Description>Infra.Db.SQLite.BusinessIds</Description>
     <PackageProjectUrl>https://github.com/netextensions/Infra.Db.SQLite.BusinessIds</PackageProjectUrl>
     <RepositoryUrl>https://github.com/netextensions/Infra.Db.SQLite.BusinessIds</RepositoryUrl>
-    <PackageTags>Core.Handlers,.net core</PackageTags>
+    <PackageTags>Infra.Db.SQLite.BusinessIds,.net core</PackageTags>
     <PackageId>NetExtensions.Infra.Db.SQLite.BusinessIds</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>1.0.2</PackageVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Authors>netextensions.io</Authors>
     <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
-  <ItemGroup>
-    <None Include="sqls.zip">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
   <ItemGroup>
     <None Include="..\..\LICENSE">
       <Pack>True</Pack>
@@ -33,8 +26,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.3" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Update="UnzipSqls.cs">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Compile>
+    <None Update="sqls.zip" Pack="true" PackagePath="/lib/netcoreapp3.1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

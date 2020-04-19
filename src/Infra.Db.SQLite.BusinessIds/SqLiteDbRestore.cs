@@ -1,11 +1,11 @@
-﻿using Microsoft.Data.Sqlite;
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
-using static Infra.Db.SQLite.BusinessIds.Constants;
+using Microsoft.Data.Sqlite;
+using static NetExtensions.Constants;
 
-namespace Infra.Db.SQLite.BusinessIds
+namespace NetExtensions
 {
     public class SqLiteDbRestore
     {

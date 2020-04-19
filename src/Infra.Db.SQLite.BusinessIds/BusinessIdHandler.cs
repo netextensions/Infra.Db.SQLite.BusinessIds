@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 
-namespace Infra.Db.SQLite.BusinessIds
+namespace NetExtensions
 {
     public class BusinessIdHandler
     {

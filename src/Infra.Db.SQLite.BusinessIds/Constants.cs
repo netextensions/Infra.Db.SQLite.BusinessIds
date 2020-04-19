@@ -1,4 +1,4 @@
-﻿namespace Infra.Db.SQLite.BusinessIds
+﻿namespace NetExtensions
 {
     public static class Constants
     {

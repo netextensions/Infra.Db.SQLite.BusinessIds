@@ -31,7 +31,7 @@ namespace NetExtensions
                 if (!file)
                 {
                     var fileInfo = new FileInfo(ZippedSqlFiles);
-                    var response = await new HttpClient().GetAsync($"https://github.com/netextensions/Infra.Db.SQLite.BusinessIds/raw/master/src/Infra.Db.SQLite.BusinessIds/sqls.zip");
+                    var response = await new HttpClient().GetAsync($"https://github.com/netextensions/Infra.Db.SQLite.BusinessIds/raw/master/data/sqls.zip");
                     response.EnsureSuccessStatusCode();
                     await using var ms = await response.Content.ReadAsStreamAsync();
                     await using var fs = File.Create(fileInfo.FullName);

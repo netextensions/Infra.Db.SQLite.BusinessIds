@@ -12,7 +12,7 @@ namespace NetExtensions
             if (!File.Exists(Constants.DatabaseFile))
             {
                 var sqLiteDbRestore = new SqLiteDbRestore();
-                sqLiteDbRestore.Restore();
+                await sqLiteDbRestore.RestoreAsync();
             }
 
             await using var connection = new SqliteConnection((new SqliteConnectionStringBuilder { DataSource = Constants.DatabaseFile }).ConnectionString);

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
+using System.Net.Http;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using static NetExtensions.Constants;
 
@@ -12,19 +14,29 @@ namespace NetExtensions
         private const string InsertInto = "INSERT INTO";
         private const string ZippedSqlFiles = "sqls.zip";
 
-        public bool Restore(bool backup = false)
+        public async Task<bool> RestoreAsync(bool backup = false)
         {
             try
             {
-  
                 if (File.Exists(DatabaseFile))
                 {
                     if (!backup)
                     {
-                        return true;
+                        return await Task.FromResult(true);
                     }
+                    File.Move(DatabaseFile, $"{Guid.NewGuid()}-{DatabaseFile}");
+                }
 
-                    File.Move(DatabaseFile, $"{Guid.NewGuid()} + {DatabaseFile}");
+                var file = File.Exists(ZippedSqlFiles);
+                if (!file)
+                {
+                    var fileInfo = new FileInfo(ZippedSqlFiles);
+                    var response = await new HttpClient().GetAsync($"https://github.com/netextensions/Infra.Db.SQLite.BusinessIds/raw/master/src/Infra.Db.SQLite.BusinessIds/sqls.zip");
+                    response.EnsureSuccessStatusCode();
+                    await using var ms = await response.Content.ReadAsStreamAsync();
+                    await using var fs = File.Create(fileInfo.FullName);
+                    ms.Seek(0, SeekOrigin.Begin);
+                    ms.CopyTo(fs);
                 }
 
                 var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);

@@ -63,7 +63,8 @@ namespace NetExtensions
                 Directory.Delete(_unzippedSqlFilesFolder, true);
                 _logger.LogInformation("Extracted files have been deleted");
                 _logger.LogInformation($"BusinessId db is ready");
-                
+                File.Delete(_zippedSqlFile);
+                _logger.LogInformation($"Delete {_zippedSqlFile} file");
                 return true;
             }
             catch (Exception e)

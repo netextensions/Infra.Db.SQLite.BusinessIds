@@ -2,17 +2,25 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 namespace NetExtensions
 {
     public class BusinessIdHandler
     {
+        private readonly ILogger<BusinessIdHandler> _logger;
+        private readonly SqLiteDbRestore _sqLiteDbRestore;
+
+        public BusinessIdHandler(ILogger<BusinessIdHandler> logger, SqLiteDbRestore sqLiteDbRestore)
+        {
+            _logger = logger;
+            _sqLiteDbRestore = sqLiteDbRestore;
+        }
         public async Task<long> GetAsync(CancellationToken token)
         {
             if (!File.Exists(Constants.DatabaseFile))
             {
-                var sqLiteDbRestore = new SqLiteDbRestore();
-                await sqLiteDbRestore.RestoreAsync();
+                await _sqLiteDbRestore.RestoreAsync();
             }
 
             await using var connection = new SqliteConnection((new SqliteConnectionStringBuilder { DataSource = Constants.DatabaseFile }).ConnectionString);
@@ -32,6 +40,7 @@ namespace NetExtensions
             getCommand.CommandText = $"update BusinessIds SET Used =1, Activated = datetime('now') where Used =0 AND BusinessId = {id}";
             await getCommand.ExecuteNonQueryAsync(token);
             transaction.Commit();
+            _logger.LogInformation($"new business id is fetched: {id}");
             return id;
         }
     }

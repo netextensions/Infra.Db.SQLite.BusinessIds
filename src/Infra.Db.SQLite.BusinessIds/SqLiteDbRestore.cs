@@ -15,38 +15,44 @@ namespace NetExtensions
         private const string InsertInto = "INSERT INTO";
 
         private readonly ILogger<SqLiteDbRestore> _logger;
+        private readonly string _databaseFile;
+        private readonly string _zippedSqlFiles;
+        private readonly string _path;
 
         public SqLiteDbRestore(ILogger<SqLiteDbRestore> logger)
         {
             _logger = logger;
+            _path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            _databaseFile = $"{_path}\\{DatabaseFile}";
+            _zippedSqlFiles = $"{_path}\\{ZippedSqlFiles}";
         }
 
         public async Task<bool> RestoreAsync(bool backup = false)
         {
             try
             {
-                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                var databaseFile = $"{path}\\{DatabaseFile}";
-                if (File.Exists(databaseFile))
+                
+          
+                if (File.Exists(_databaseFile))
                 {
-                    _logger.LogInformation($"{databaseFile} file exists");
+                    _logger.LogInformation($"{_databaseFile} file exists");
                     if (!backup)
                     {
-                        _logger.LogInformation($"{databaseFile} file exists and won't make any backup");
+                        _logger.LogInformation($"{_databaseFile} file exists and won't make any backup");
                         return await Task.FromResult(true);
                     }
 
-                    _logger.LogInformation($"{databaseFile} file exists moving");
-                    File.Move(databaseFile, $"{path}//{Guid.NewGuid()}-{DatabaseFile}");
+                    _logger.LogInformation($"{_databaseFile} file exists moving");
+                    File.Move(_databaseFile, $"{_path}//{Guid.NewGuid()}-{DatabaseFile}");
                 }
 
-                var zippedSqlFiles = $"{path}\\{ZippedSqlFiles}";
-                var file = File.Exists(zippedSqlFiles);
-                if (!file) await GetSqlFileFormGithub(zippedSqlFiles);
-                ZipFile.ExtractToDirectory(zippedSqlFiles, path, true);
-                CreateDb(path);
+            
+                var file = File.Exists(_zippedSqlFiles);
+                if (!file) await GetSqlFileFormGithub(_zippedSqlFiles);
+                ZipFile.ExtractToDirectory(_zippedSqlFiles, _path, true);
+                CreateDb(_path);
                 _logger.LogInformation("db has been created created");
-                Directory.Delete($"{path}\\sqls", true);
+                Directory.Delete($"{_path}\\sqls", true);
                 _logger.LogInformation("Extracted files have been deleted");
                 _logger.LogInformation($"BusinessId db is ready");
                 

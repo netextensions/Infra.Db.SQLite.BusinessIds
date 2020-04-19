@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using static NetExtensions.Constants;
 
 namespace NetExtensions
 {
@@ -11,22 +12,23 @@ namespace NetExtensions
     {
         private readonly ILogger<BusinessIdHandler> _logger;
         private readonly SqLiteDbRestore _sqLiteDbRestore;
+        private readonly string _databaseFile;
 
         public BusinessIdHandler(ILogger<BusinessIdHandler> logger, SqLiteDbRestore sqLiteDbRestore)
         {
             _logger = logger;
             _sqLiteDbRestore = sqLiteDbRestore;
+            var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            _databaseFile = $"{path}\\{DatabaseFile}";
         }
         public async Task<long> GetAsync(CancellationToken token)
         {
-            var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            var databaseFile = $"{path}\\{Constants.DatabaseFile}";
-            if (!File.Exists(databaseFile))
+            if (!File.Exists(_databaseFile))
             {
                 await _sqLiteDbRestore.RestoreAsync();
             }
 
-            await using var connection = new SqliteConnection((new SqliteConnectionStringBuilder { DataSource = databaseFile }).ConnectionString);
+            await using var connection = new SqliteConnection((new SqliteConnectionStringBuilder { DataSource = _databaseFile }).ConnectionString);
             connection.Open();
             await using var transaction = connection.BeginTransaction();
             var getCommand = connection.CreateCommand();

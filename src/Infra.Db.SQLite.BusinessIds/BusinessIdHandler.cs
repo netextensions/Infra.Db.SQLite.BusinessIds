@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
@@ -18,12 +19,14 @@ namespace NetExtensions
         }
         public async Task<long> GetAsync(CancellationToken token)
         {
-            if (!File.Exists(Constants.DatabaseFile))
+            var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var databaseFile = $"{path}\\{Constants.DatabaseFile}";
+            if (!File.Exists(databaseFile))
             {
                 await _sqLiteDbRestore.RestoreAsync();
             }
 
-            await using var connection = new SqliteConnection((new SqliteConnectionStringBuilder { DataSource = Constants.DatabaseFile }).ConnectionString);
+            await using var connection = new SqliteConnection((new SqliteConnectionStringBuilder { DataSource = databaseFile }).ConnectionString);
             connection.Open();
             await using var transaction = connection.BeginTransaction();
             var getCommand = connection.CreateCommand();

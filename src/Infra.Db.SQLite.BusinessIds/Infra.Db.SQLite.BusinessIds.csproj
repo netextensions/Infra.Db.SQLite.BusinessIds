@@ -10,7 +10,7 @@
     <RepositoryUrl>https://github.com/netextensions/Infra.Db.SQLite.BusinessIds</RepositoryUrl>
     <PackageTags>Infra.Db.SQLite.BusinessIds,.net core</PackageTags>
     <PackageId>NetExtensions.Infra.Db.SQLite.BusinessIds</PackageId>
-    <PackageVersion>1.0.5</PackageVersion>
+    <PackageVersion>1.0.6</PackageVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Authors>netextensions.io</Authors>
     <PackageIcon>icon.png</PackageIcon>

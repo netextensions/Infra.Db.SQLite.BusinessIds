@@ -13,7 +13,7 @@ namespace NetExtensions
     public class SqLiteDbRestore
     {
         private const string InsertInto = "INSERT INTO";
-        private const string ZippedSqlFiles = "sqls.zip";
+
         private readonly ILogger<SqLiteDbRestore> _logger;
 
         public SqLiteDbRestore(ILogger<SqLiteDbRestore> logger)
@@ -25,28 +25,31 @@ namespace NetExtensions
         {
             try
             {
-                if (File.Exists(DatabaseFile))
+                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                var databaseFile = $"{path}\\{DatabaseFile}";
+                if (File.Exists(databaseFile))
                 {
-                    _logger.LogInformation($"{DatabaseFile} file exists");
+                    _logger.LogInformation($"{databaseFile} file exists");
                     if (!backup)
                     {
-                        _logger.LogInformation($"{DatabaseFile} file exists and won't make any backup");
+                        _logger.LogInformation($"{databaseFile} file exists and won't make any backup");
                         return await Task.FromResult(true);
                     }
 
-                    _logger.LogInformation($"{DatabaseFile} file exists moving");
-                    File.Move(DatabaseFile, $"{Guid.NewGuid()}-{DatabaseFile}");
+                    _logger.LogInformation($"{databaseFile} file exists moving");
+                    File.Move(databaseFile, $"{path}//{Guid.NewGuid()}-{DatabaseFile}");
                 }
 
-                var file = File.Exists(ZippedSqlFiles);
-                if (!file) await GetSqlFileFormGithub();
-
-                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                ZipFile.ExtractToDirectory(ZippedSqlFiles, path, true);
+                var zippedSqlFiles = $"{path}\\{ZippedSqlFiles}";
+                var file = File.Exists(zippedSqlFiles);
+                if (!file) await GetSqlFileFormGithub(zippedSqlFiles);
+                ZipFile.ExtractToDirectory(zippedSqlFiles, path, true);
                 CreateDb(path);
                 _logger.LogInformation("db has been created created");
                 Directory.Delete($"{path}\\sqls", true);
                 _logger.LogInformation("Extracted files have been deleted");
+                _logger.LogInformation($"BusinessId db is ready");
+                
                 return true;
             }
             catch (Exception e)
@@ -57,17 +60,17 @@ namespace NetExtensions
             return false;
         }
 
-        private async Task GetSqlFileFormGithub()
+        private async Task GetSqlFileFormGithub(string zippedSqlFiles)
         {
-            _logger.LogInformation("Get sql zip file from Github");
-            var fileInfo = new FileInfo(ZippedSqlFiles);
-            var response = await new HttpClient().GetAsync("https://github.com/netextensions/Infra.Db.SQLite.BusinessIds/raw/master/data/sqls.zip");
+            _logger.LogInformation($"Get sql zip file from Github url: {GithubUrl}");
+            var fileInfo = new FileInfo(zippedSqlFiles);
+            var response = await new HttpClient().GetAsync(GithubUrl);
             response.EnsureSuccessStatusCode();
             await using var ms = await response.Content.ReadAsStreamAsync();
             await using var fs = File.Create(fileInfo.FullName);
             ms.Seek(0, SeekOrigin.Begin);
             ms.CopyTo(fs);
-            _logger.LogInformation("sql zip file from Github is downloaded");
+            _logger.LogInformation($"sql zip file  is downloaded from Github url: {GithubUrl}");
         }
 
         private void CreateDb(string path)
@@ -98,36 +101,40 @@ namespace NetExtensions
         {
             foreach (var f in new DirectoryInfo($"{path}\\sqls").GetFiles("*.sql"))
             {
-                _logger.LogInformation($"Save {f.FullName} to the sqlite database");
-                using var transaction = connection.BeginTransaction();
-                var insertCmd = connection.CreateCommand();
-                string preLine = null;
-                foreach (var line in File.ReadAllLines(f.FullName))
+                ReadFile(connection, f);
+            }
+        }
+
+        private void ReadFile(SqliteConnection connection, FileInfo f)
+        {
+            _logger.LogInformation($"Save {f.FullName} to the sqlite database");
+            using var transaction = connection.BeginTransaction();
+            var insertCmd = connection.CreateCommand();
+            string preLine = null;
+            foreach (var line in File.ReadAllLines(f.FullName))
+            {
+                if (line.StartsWith(InsertInto))
                 {
-                    if (line.StartsWith(InsertInto))
-                    {
-                        preLine = line;
-                        continue;
-                    }
-
-                    if (preLine != null)
-                    {
-                        preLine = $"{preLine} {line}";
-                    }
-                    else
-                    {
-                        if (!line.StartsWith(InsertInto)) continue;
-                    }
-
-                    if (preLine == null) continue;
-                    insertCmd.CommandText = preLine;
-                    insertCmd.ExecuteNonQuery();
-                    preLine = null;
+                    preLine = line;
+                    continue;
                 }
 
-                transaction.Commit();
-                _logger.LogInformation("Commit transaction");
+                if (preLine != null)
+                {
+                    preLine = $"{preLine} {line}";
+                }
+                else
+                {
+                    if (!line.StartsWith(InsertInto)) continue;
+                }
+
+                if (preLine == null) continue;
+                insertCmd.CommandText = preLine;
+                insertCmd.ExecuteNonQuery();
+                preLine = null;
             }
+            transaction.Commit();
+            _logger.LogInformation($"{f.FullName} has been saved in the sqlite database");
         }
 
         private void CreateIndex(SqliteConnection connection)

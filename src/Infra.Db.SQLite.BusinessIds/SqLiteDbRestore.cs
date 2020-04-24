@@ -19,11 +19,18 @@ namespace NetExtensions
         private readonly string _zippedSqlFile;
         private readonly string _unzippedSqlFilesFolder;
 
-        public SqLiteDbRestore(ILogger<SqLiteDbRestore> logger)
+        public SqLiteDbRestore(ILogger<SqLiteDbRestore> logger, string connectionString = null)
         {
             _logger = logger;
             var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            _databaseFile = $"{path}\\{DatabaseFile}";
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                _databaseFile = $"{path}\\{DatabaseFile}";
+            }
+            else
+            {
+                _databaseFile = connectionString;
+            }
             _zippedSqlFile = $"{path}\\{ZippedSqlFile}";
             _unzippedSqlFilesFolder = $"{path}\\{UnzippedSqlFilesFolder}";
  

@@ -14,12 +14,20 @@ namespace NetExtensions
         private readonly SqLiteDbRestore _sqLiteDbRestore;
         private readonly string _databaseFile;
 
-        public BusinessIdHandler(ILogger<BusinessIdHandler> logger, SqLiteDbRestore sqLiteDbRestore)
+        public BusinessIdHandler(ILogger<BusinessIdHandler> logger, SqLiteDbRestore sqLiteDbRestore, string connectionString = null)
         {
             _logger = logger;
             _sqLiteDbRestore = sqLiteDbRestore;
-            var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            _databaseFile = $"{path}\\{DatabaseFile}";
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                _databaseFile = $"{path}\\{DatabaseFile}";
+
+            }
+            else
+            {
+                _databaseFile = connectionString;
+            }
         }
         public async Task<long> GetAsync(CancellationToken token)
         {

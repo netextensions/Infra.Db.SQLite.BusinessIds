@@ -14,7 +14,7 @@ namespace Infra.Db.SQLite.Loader
         static async Task Main(string[] args)
         {
             IServiceCollection services = new ServiceCollection();
-            services.AddBusinessIdHandler();
+            services.AddBusinessIdHandler("Data Source=Test.db");
             services.AddScoped(typeof(ILogger<>), typeof(CustomLogger<>));
             var buildServiceProvider = services.BuildServiceProvider();
             var businessIdHandler = buildServiceProvider.GetService<BusinessIdHandler>();

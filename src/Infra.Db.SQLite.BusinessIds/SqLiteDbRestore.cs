@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -15,61 +16,31 @@ namespace NetExtensions
         private const string InsertInto = "INSERT INTO";
 
         private readonly ILogger<SqLiteDbRestore> _logger;
-        private readonly string _databaseFile;
-        private readonly string _zippedSqlFile;
         private readonly string _unzippedSqlFilesFolder;
+        private readonly string _zippedSqlFile;
 
-        public SqLiteDbRestore(ILogger<SqLiteDbRestore> logger, string connectionString = null)
+        public SqLiteDbRestore(ILogger<SqLiteDbRestore> logger)
         {
             _logger = logger;
             var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                _databaseFile = $"{path}\\{DatabaseFile}";
-            }
-            else
-            {
-                _databaseFile = connectionString;
-            }
             _zippedSqlFile = $"{path}\\{ZippedSqlFile}";
             _unzippedSqlFilesFolder = $"{path}\\{UnzippedSqlFilesFolder}";
- 
-    }
+        }
 
-        public async Task<bool> RestoreAsync(bool backup = false)
+        public async Task<bool> RestoreAsync(string connectionString, string dbFilePath, bool backup = false)
         {
             try
             {
-                
-          
-                if (File.Exists(_databaseFile))
-                {
-                    _logger.LogInformation($"{_databaseFile} file exists");
-                    if (!backup)
-                    {
-                        _logger.LogInformation($"{_databaseFile} file exists and won't make any backup");
-                        return await Task.FromResult(true);
-                    }
+                if (backup) BackupDatabaseFile(dbFilePath);
 
-                    _logger.LogInformation($"{_databaseFile} file exists moving");
-                    File.Move(_databaseFile, $"{Guid.NewGuid()}-{_databaseFile}");
-                }
+                await LoadSourceSqlFiles();
 
-            
-                var file = File.Exists(_zippedSqlFile);
-                if (!file)
-                {
-                    _logger.LogInformation($"Get sql zip file from Github url: {GithubUrl}");
-                    await GetSqlFileFormGithub(_zippedSqlFile);
-                    _logger.LogInformation($"sql zip file  is downloaded from Github url: {GithubUrl}");
-                }
-           
                 ZipFile.ExtractToDirectory(_zippedSqlFile, _unzippedSqlFilesFolder, true);
-                CreateDb();
+                CreateDb(connectionString);
                 _logger.LogInformation("db has been created created");
                 Directory.Delete(_unzippedSqlFilesFolder, true);
                 _logger.LogInformation("Extracted files have been deleted");
-                _logger.LogInformation($"BusinessId db is ready");
+                _logger.LogInformation("BusinessId db is ready");
                 File.Delete(_zippedSqlFile);
                 _logger.LogInformation($"Delete {_zippedSqlFile} file");
                 return true;
@@ -80,6 +51,17 @@ namespace NetExtensions
             }
 
             return false;
+        }
+
+        private async Task LoadSourceSqlFiles()
+        {
+            var file = File.Exists(_zippedSqlFile);
+            if (!file)
+            {
+                _logger.LogInformation($"Get sql zip file from Github url: {GithubUrl}");
+                await GetSqlFileFormGithub(_zippedSqlFile);
+                _logger.LogInformation($"sql zip file  is downloaded from Github url: {GithubUrl}");
+            }
         }
 
         private async Task GetSqlFileFormGithub(string zippedSqlFiles)
@@ -94,15 +76,26 @@ namespace NetExtensions
             ms.CopyTo(fs);
         }
 
-        private void CreateDb()
+        private void CreateDb(string connectionString)
         {
-            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder {DataSource = _databaseFile}.ConnectionString);
+            using var connection = new SqliteConnection(connectionString);
             connection.Open();
             DeleteTable(connection);
             CreateTable(connection);
             LoadData(connection);
             CreateIndex(connection);
         }
+
+        private void BackupDatabaseFile(string databaseFilePath)
+        {
+            if (!File.Exists(databaseFilePath)) return;
+            _logger.LogInformation($"{databaseFilePath} file exists");
+
+            _logger.LogInformation($"{databaseFilePath} file exists moving");
+            // todo: async
+            File.Move(databaseFilePath, $"{Guid.NewGuid()}-{databaseFilePath}");
+        }
+
 
         private static void DeleteTable(SqliteConnection connection)
         {
@@ -118,13 +111,7 @@ namespace NetExtensions
             createTableCmd.ExecuteNonQuery();
         }
 
-        private void LoadData(SqliteConnection connection)
-        {
-            foreach (var f in new DirectoryInfo(_unzippedSqlFilesFolder).GetFiles("*.sql"))
-            {
-                ReadFile(connection, f);
-            }
-        }
+        private void LoadData(SqliteConnection connection) => new DirectoryInfo(_unzippedSqlFilesFolder).GetFiles("*.sql").ToList().ForEach(f => ReadFile(connection, f));
 
         private void ReadFile(SqliteConnection connection, FileInfo f)
         {
@@ -154,6 +141,7 @@ namespace NetExtensions
                 insertCmd.ExecuteNonQuery();
                 preLine = null;
             }
+
             transaction.Commit();
             _logger.LogInformation($"{f.FullName} has been saved in the sqlite database");
         }
